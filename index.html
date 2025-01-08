@@ -61,6 +61,21 @@
     .edit-button:hover {
       background-color: #6c3483;
     }
+    .restore-button {
+      display: none;
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .restore-button:hover {
+      background-color: #218838;
+    }
     .container {
       max-width: 800px;
       margin: 20px auto;
@@ -263,14 +278,15 @@
       <button onclick="addTask()">Agregar</button>
     </div>
 
+    <button id="restore-default-button" class="restore-button" onclick="restoreDefaultTasks()">Restaurar Tareas por Defecto</button>
+
     <div id="task-list"></div>
   </div>
 
-  <!-- Audio motivador -->
-  <audio id="motivational-sound" src="carnival.wav"></audio>
+  <audio id="motivational-sound" src="https://kaozteamx.github.io/rutina/carnival.wav"></audio>
 
   <script>
-    const tasks = [
+    const defaultTasks = [
       { id: 1, time: "Mañana", name: "Despertar", emoji: "⏰" },
       { id: 2, time: "Mañana", name: "Lavarse los dientes", emoji: "🪥" },
       { id: 3, time: "Mañana", name: "Desayunar", emoji: "🥐" },
@@ -278,8 +294,28 @@
       { id: 5, time: "Noche", name: "Dormir", emoji: "😴" }
     ];
 
+    const tasks = [];
     const completedTasks = [];
     let editMode = false;
+
+    function loadTasksFromLocalStorage() {
+      const storedTasks = localStorage.getItem('tasks');
+      if (storedTasks) {
+        tasks.splice(0, tasks.length, ...JSON.parse(storedTasks));
+      } else {
+        tasks.splice(0, tasks.length, ...defaultTasks);
+      }
+    }
+
+    function saveTasksToLocalStorage() {
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
+
+    function restoreDefaultTasks() {
+      tasks.splice(0, tasks.length, ...defaultTasks);
+      saveTasksToLocalStorage();
+      renderTasks();
+    }
 
     function renderTasks() {
       const taskList = document.getElementById('task-list');
@@ -325,11 +361,6 @@
             taskElement.innerHTML += `<button class="delete-button" onclick="deleteTask(${task.id})">Eliminar</button>`;
           }
 
-          taskElement.addEventListener('dragstart', handleDragStart);
-          taskElement.addEventListener('dragover', handleDragOver);
-          taskElement.addEventListener('drop', handleDrop);
-          taskElement.addEventListener('dragend', handleDragEnd);
-
           taskContainer.appendChild(taskElement);
         });
 
@@ -337,34 +368,29 @@
         taskList.appendChild(section);
       }
 
+      saveTasksToLocalStorage();
       updateProgress();
     }
 
-    function handleDragStart(event) {
-      event.target.classList.add('dragging');
-      event.dataTransfer.setData('text/plain', event.target.dataset.id);
+    function addTask() {
+      const name = document.getElementById('new-task-name').value;
+      const emoji = document.getElementById('new-task-emoji').value;
+      const time = document.getElementById('new-task-time').value;
+
+      if (name && emoji && time) {
+        tasks.push({ id: Date.now(), time, name, emoji });
+        saveTasksToLocalStorage();
+        renderTasks();
+      }
     }
 
-    function handleDragOver(event) {
-      event.preventDefault();
-    }
-
-    function handleDrop(event) {
-      event.preventDefault();
-      const draggedId = event.dataTransfer.getData('text/plain');
-      const targetId = event.target.closest('.task').dataset.id;
-
-      const draggedIndex = tasks.findIndex(task => task.id == draggedId);
-      const targetIndex = tasks.findIndex(task => task.id == targetId);
-
-      const [draggedTask] = tasks.splice(draggedIndex, 1);
-      tasks.splice(targetIndex, 0, draggedTask);
-
-      renderTasks();
-    }
-
-    function handleDragEnd(event) {
-      event.target.classList.remove('dragging');
+    function deleteTask(id) {
+      const index = tasks.findIndex(task => task.id === id);
+      if (index !== -1) {
+        tasks.splice(index, 1);
+        saveTasksToLocalStorage();
+        renderTasks();
+      }
     }
 
     function toggleTask(taskId) {
@@ -413,28 +439,11 @@
     function toggleEditMode() {
       editMode = !editMode;
       document.getElementById('add-task-form').style.display = editMode ? 'block' : 'none';
+      document.getElementById('restore-default-button').style.display = editMode ? 'block' : 'none';
       renderTasks();
     }
 
-    function addTask() {
-      const name = document.getElementById('new-task-name').value;
-      const emoji = document.getElementById('new-task-emoji').value;
-      const time = document.getElementById('new-task-time').value;
-
-      if (name && emoji && time) {
-        tasks.push({ id: tasks.length + 1, time, name, emoji });
-        renderTasks();
-      }
-    }
-
-    function deleteTask(id) {
-      const index = tasks.findIndex(task => task.id === id);
-      if (index !== -1) {
-        tasks.splice(index, 1);
-        renderTasks();
-      }
-    }
-
+    loadTasksFromLocalStorage();
     renderTasks();
   </script>
 </body>
